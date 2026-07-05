@@ -1,0 +1,70 @@
+# TokenDanceLab — Reusable Go Service CI
+#
+# Usage:
+#   jobs:
+#     ci:
+#       uses: TokenDanceLab/.github/.github/workflows/ci-go-service.yml@main
+#       with:
+#         go_version: "1.25"
+#         working_directory: "."
+
+name: CI — Go Service
+
+on:
+  workflow_call:
+    inputs:
+      go_version:
+        required: false
+        type: string
+        default: "1.25"
+        description: "Go version"
+      working_directory:
+        required: false
+        type: string
+        default: "."
+        description: "Working directory for Go commands"
+
+jobs:
+  ci:
+    name: Go CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go_version }}
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Lint (non-blocking)
+        continue-on-error: true
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ${{ inputs.working_directory }}
+
+      - name: Security scan (gosec)
+        continue-on-error: true
+        uses: securego/gosec@master
+        with:
+          args: ./...
+
+      - name: Vulnerability check (govulncheck)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...

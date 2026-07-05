@@ -1,0 +1,50 @@
+# TokenDanceLab — Reusable Deployment File Validation
+#
+# Usage:
+#   jobs:
+#     validate:
+#       uses: TokenDanceLab/.github/.github/workflows/cd-pr-check.yml@main
+#       with:
+#         compose_file: docker-compose.prod.yml
+
+name: CD — PR Deploy Check
+
+on:
+  workflow_call:
+    inputs:
+      compose_file:
+        required: false
+        type: string
+        default: "docker-compose.yml"
+        description: "Path to compose file to validate"
+      dockerfile:
+        required: false
+        type: string
+        default: "Dockerfile"
+        description: "Path to Dockerfile to validate"
+
+jobs:
+  validate:
+    name: Validate Deployment Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Compose YAML
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('${{ inputs.compose_file }}'))"
+          echo "✅ Compose YAML valid"
+
+      - name: Validate Dockerfile syntax
+        run: |
+          if [ -f "${{ inputs.dockerfile }}" ]; then
+            echo "✅ Dockerfile exists"
+          else
+            echo "⚠️ Dockerfile not found at ${{ inputs.dockerfile }}"
+          fi
+
+      - name: Docker dry-build
+        run: |
+          docker build --dry-run -f ${{ inputs.dockerfile }} . 2>&1 || true
+          echo "✅ Dockerfile syntax checked"

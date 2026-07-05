@@ -1,0 +1,26 @@
+# TokenDanceLab — Release Notes Categories
+# Used by all repos with softprops/action-gh-release generate_release_notes: true
+
+changelog:
+  categories:
+    - title: "🚀 Features"
+      labels: ["feature", "enhancement"]
+    - title: "🐛 Bug Fixes"
+      labels: ["bug", "fix"]
+    - title: "🔒 Security"
+      labels: ["security"]
+    - title: "📚 Documentation"
+      labels: ["docs", "documentation"]
+    - title: "⚡ Performance"
+      labels: ["performance", "perf"]
+    - title: "🧪 Testing"
+      labels: ["test", "testing"]
+    - title: "🔧 CI/CD"
+      labels: ["ci", "cd", "github_actions"]
+    - title: "🏗️ Refactor"
+      labels: ["refactor", "chore"]
+    - title: "📦 Dependencies"
+      labels: ["dependencies"]
+    exclude:
+      labels: ["skip-changelog", "duplicate", "wontfix"]
+      authors: ["dependabot", "codex-app[bot]"]
