@@ -1,0 +1,65 @@
+name: CI — Go Service
+
+# Callable L1 Go CI. Policy: github-actions-ci-cd-policy.md §4
+on:
+  workflow_call:
+    inputs:
+      go_version:
+        required: false
+        type: string
+        default: "1.25"
+      working_directory:
+        required: false
+        type: string
+        default: "."
+      run_govulncheck:
+        required: false
+        type: boolean
+        default: true
+      govulncheck_blocking:
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-go-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Go CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go_version }}
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Lint (non-blocking)
+        continue-on-error: true
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ${{ inputs.working_directory }}
+
+      - name: Vulnerability check (govulncheck)
+        if: inputs.run_govulncheck
+        continue-on-error: ${{ !inputs.govulncheck_blocking }}
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./...
