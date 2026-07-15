@@ -28,7 +28,7 @@ concurrency:
 jobs:
   ci:
     name: Go CI
-    runs-on: ubuntu-latest
+    runs-on: [us1, ubuntu-latest]
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
