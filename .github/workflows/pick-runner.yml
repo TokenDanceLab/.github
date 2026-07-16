@@ -70,21 +70,34 @@ jobs:
           ALLOW_HOSTED: ${{ inputs.allow_hosted }}
         run: |
           set -euo pipefail
-          # List online idle runners; jq chooses labels.
-          # Note: github.token may lack org runner list permission — set RUNNER_QUERY_TOKEN if so.
-          if ! json=$(gh api "orgs/${ORG}/actions/runners" 2>/dev/null); then
-            echo "warn: cannot list org runners; falling through" >&2
+          # GHA booleans arrive as strings true/false
+          pl=$( [ "$PREFER_LOCAL" = "true" ] && echo true || echo false )
+          pu=$( [ "$PREFER_US1" = "true" ] && echo true || echo false )
+          ah=$( [ "$ALLOW_HOSTED" = "true" ] && echo true || echo false )
+          # List online idle runners. github.token may lack org list permission — set RUNNER_QUERY_TOKEN.
+          if json=$(gh api "orgs/${ORG}/actions/runners" 2>/dev/null); then
+            listed=1
+          else
+            echo "warn: cannot list org runners (token scope?). fail-open." >&2
+            listed=0
             json='{"runners":[]}'
           fi
-          choice=$(printf '%s' "$json" | jq -r --argjson pl "${PREFER_LOCAL}" --argjson pu "${PREFER_US1}" --argjson ah "${ALLOW_HOSTED}" '
+          choice=$(printf '%s' "$json" | jq -r --argjson pl "$pl" --argjson pu "$pu" --argjson ah "$ah" --argjson listed "$listed" '
             [.runners[]? | select(.status=="online" and (.busy|not))] as $idle |
             def has($l): any($idle[]; any(.labels[]?; .name==$l));
-            if ($pl and has("local")) then "local"
-            elif ($pu and has("us1")) then "us1"
+            if ($listed==1 and $pl and has("local")) then "local"
+            elif ($listed==1 and $pu and has("us1")) then "us1"
+            elif ($listed==0 and $pu) then "us1"
             elif $ah then "hosted"
+            elif ($listed==1 and $pu) then "us1"
             else "none"
             end
           ')
+          # If list worked and preferred runners are only busy (not offline), still queue on us1
+          if [ "$choice" = "none" ] && [ "$pu" = "true" ]; then
+            online_us1=$(printf '%s' "$json" | jq -r '[.runners[]? | select(.status=="online" and any(.labels[]?; .name=="us1"))] | length')
+            if [ "${online_us1:-0}" -gt 0 ]; then choice=us1; fi
+          fi
           case "$choice" in
             local)  runner='["self-hosted","local"]' ;;
             us1)    runner='["self-hosted","us1"]' ;;
