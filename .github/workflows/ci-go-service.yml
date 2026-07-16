@@ -28,7 +28,9 @@ concurrency:
 jobs:
   ci:
     name: Go CI
-    runs-on: [us1, ubuntu-latest]
+    # runs-on array is AND (all labels), NOT priority fallback.
+    # Policy: L1 on us1 self-hosted. Hybrid fallback needs a routing job — see server policy §4.2.
+    runs-on: [self-hosted, us1]
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
