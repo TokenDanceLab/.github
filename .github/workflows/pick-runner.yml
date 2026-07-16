@@ -1,0 +1,98 @@
+name: Pick runner (hybrid)
+
+# Callable routing job: prefer idle local → us1 → optional ubuntu-latest.
+# runs-on arrays are AND, not fallback — this job is the supported hybrid path.
+# Policy: server docs/architecture/github-actions-ci-cd-policy.md §4.2.1
+#
+# Usage:
+#   jobs:
+#     pick:
+#       uses: TokenDanceLab/.github/.github/workflows/pick-runner.yml@main
+#       secrets:
+#         RUNNER_QUERY_TOKEN: ${{ secrets.RUNNER_QUERY_TOKEN }}  # optional
+#     work:
+#       needs: pick
+#       runs-on: ${{ fromJson(needs.pick.outputs.runner) }}
+#       steps: ...
+
+on:
+  workflow_call:
+    inputs:
+      prefer_local:
+        description: "Prefer idle local-runner when online"
+        type: boolean
+        default: true
+      prefer_us1:
+        description: "Prefer idle us1-runner when online"
+        type: boolean
+        default: true
+      allow_hosted:
+        description: "Fall back to ubuntu-latest (may hit $0 spending limit)"
+        type: boolean
+        default: false
+      org:
+        description: "Org that owns self-hosted runners"
+        type: string
+        default: TokenDanceLab
+    secrets:
+      RUNNER_QUERY_TOKEN:
+        description: "PAT that can list org runners (admin:org or actions read). Optional if github.token works."
+        required: false
+    outputs:
+      runner:
+        description: "JSON string for runs-on: fromJson(...) — e.g. [\"self-hosted\",\"us1\"] or \"ubuntu-latest\""
+        value: ${{ jobs.pick.outputs.runner }}
+      choice:
+        description: "Human label: local | us1 | hosted | none"
+        value: ${{ jobs.pick.outputs.choice }}
+
+concurrency:
+  group: pick-runner-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pick:
+    name: Pick runner
+    # Always hosted or fixed us1 — keep this job tiny. Prefer us1 if we want zero hosted minutes:
+    runs-on: [self-hosted, us1]
+    timeout-minutes: 2
+    outputs:
+      runner: ${{ steps.decide.outputs.runner }}
+      choice: ${{ steps.decide.outputs.choice }}
+    steps:
+      - name: Decide
+        id: decide
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_QUERY_TOKEN || github.token }}
+          ORG: ${{ inputs.org }}
+          PREFER_LOCAL: ${{ inputs.prefer_local }}
+          PREFER_US1: ${{ inputs.prefer_us1 }}
+          ALLOW_HOSTED: ${{ inputs.allow_hosted }}
+        run: |
+          set -euo pipefail
+          # List online idle runners; jq chooses labels.
+          # Note: github.token may lack org runner list permission — set RUNNER_QUERY_TOKEN if so.
+          if ! json=$(gh api "orgs/${ORG}/actions/runners" 2>/dev/null); then
+            echo "warn: cannot list org runners; falling through" >&2
+            json='{"runners":[]}'
+          fi
+          choice=$(printf '%s' "$json" | jq -r --argjson pl "${PREFER_LOCAL}" --argjson pu "${PREFER_US1}" --argjson ah "${ALLOW_HOSTED}" '
+            [.runners[]? | select(.status=="online" and (.busy|not))] as $idle |
+            def has($l): any($idle[]; any(.labels[]?; .name==$l));
+            if ($pl and has("local")) then "local"
+            elif ($pu and has("us1")) then "us1"
+            elif $ah then "hosted"
+            else "none"
+            end
+          ')
+          case "$choice" in
+            local)  runner='["self-hosted","local"]' ;;
+            us1)    runner='["self-hosted","us1"]' ;;
+            hosted) runner='"ubuntu-latest"' ;;
+            *)
+              echo "No eligible runner (local/us1 offline and allow_hosted=false)" >&2
+              exit 1
+              ;;
+          esac
+          echo "choice=$choice" | tee -a "$GITHUB_OUTPUT"
+          echo "runner=$runner" | tee -a "$GITHUB_OUTPUT"
