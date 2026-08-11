@@ -33,7 +33,7 @@ concurrency:
 jobs:
   build-and-push:
     name: Build & Push to GHCR
-    # AND labels; self-hosted runner only. Do NOT use [us1, ubuntu-latest] (that is AND, not fallback).
+    # AND labels; self-hosted runner only. Do NOT use [<label>, ubuntu-latest] (that is AND, not fallback).
     runs-on: [self-hosted, '${{ vars.RUNNER_LABEL || ''self-hosted'' }}']
     permissions:
       contents: read

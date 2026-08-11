@@ -44,7 +44,7 @@ on:
         required: false
     outputs:
       runner:
-        description: "JSON string for runs-on: fromJson(...) — e.g. [\"self-hosted\",\"us1\"] or \"ubuntu-latest\""
+        description: "JSON string for runs-on: fromJson(...) — e.g. [\"self-hosted\",\"<label>\"] or \"ubuntu-latest\""
         value: ${{ jobs.pick.outputs.runner }}
       choice:
         description: "Human label: local | preferred | hosted | none"
@@ -99,7 +99,7 @@ jobs:
             else "none"
             end
           ')
-          # If list worked and preferred runners are only busy (not offline), still queue on us1
+          # If list worked and preferred runners are only busy (not offline), still queue on preferred runner
           if [ "$choice" = "none" ] && [ "$pu" = "true" ]; then
             online_preferred=$(printf '%s' "$json" | jq -r --arg rl "$rl" '[.runners[]? | select(.status=="online" and any(.labels[]?; .name==$rl))] | length')
             if [ "${online_preferred:-0}" -gt 0 ]; then choice=preferred; fi
