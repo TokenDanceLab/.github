@@ -19,8 +19,8 @@ concurrency:
 jobs:
   validate:
     name: Validate Deployment Files
-    # AND labels; us1 self-hosted only.
-    runs-on: [self-hosted, us1]
+    # AND labels; self-hosted runner only.
+    runs-on: [self-hosted, '${{ vars.RUNNER_LABEL || ''self-hosted'' }}']
     steps:
       - name: Checkout
         uses: actions/checkout@v4

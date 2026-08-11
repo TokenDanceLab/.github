@@ -29,8 +29,8 @@ jobs:
   ci:
     name: Go CI
     # runs-on array is AND (all labels), NOT priority fallback.
-    # Policy: L1 on us1 self-hosted. Hybrid fallback needs a routing job — see server policy §4.2.
-    runs-on: [self-hosted, us1]
+    # Policy: L1 on self-hosted runner. Hybrid fallback needs a routing job — see server policy §4.2.
+    runs-on: [self-hosted, '${{ vars.RUNNER_LABEL || ''self-hosted'' }}']
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}

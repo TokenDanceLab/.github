@@ -1,6 +1,6 @@
 name: Pick runner (hybrid)
 
-# Callable routing job: prefer idle local → us1 → optional ubuntu-latest.
+# Callable routing job: prefer idle local → preferred self-hosted label → optional ubuntu-latest.
 # runs-on arrays are AND, not fallback — this job is the supported hybrid path.
 # Policy: server docs/architecture/github-actions-ci-cd-policy.md §4.2.1
 #
@@ -22,10 +22,14 @@ on:
         description: "Prefer idle local-runner when online"
         type: boolean
         default: true
-      prefer_us1:
-        description: "Prefer idle us1-runner when online"
+      prefer_label:
+        description: "Prefer idle runner with this label when online"
         type: boolean
         default: true
+      runner_label:
+        description: "Self-hosted runner label to prefer"
+        type: string
+        default: self-hosted
       allow_hosted:
         description: "Fall back to ubuntu-latest (may hit $0 spending limit)"
         type: boolean
@@ -43,7 +47,7 @@ on:
         description: "JSON string for runs-on: fromJson(...) — e.g. [\"self-hosted\",\"us1\"] or \"ubuntu-latest\""
         value: ${{ jobs.pick.outputs.runner }}
       choice:
-        description: "Human label: local | us1 | hosted | none"
+        description: "Human label: local | preferred | hosted | none"
         value: ${{ jobs.pick.outputs.choice }}
 
 concurrency:
@@ -53,8 +57,8 @@ concurrency:
 jobs:
   pick:
     name: Pick runner
-    # Always hosted or fixed us1 — keep this job tiny. Prefer us1 if we want zero hosted minutes:
-    runs-on: [self-hosted, us1]
+    # Keep this job tiny; runs on any self-hosted runner.
+    runs-on: self-hosted
     timeout-minutes: 2
     outputs:
       runner: ${{ steps.decide.outputs.runner }}
@@ -66,13 +70,15 @@ jobs:
           GH_TOKEN: ${{ secrets.RUNNER_QUERY_TOKEN || github.token }}
           ORG: ${{ inputs.org }}
           PREFER_LOCAL: ${{ inputs.prefer_local }}
-          PREFER_US1: ${{ inputs.prefer_us1 }}
+          PREFER_LABEL: ${{ inputs.prefer_label }}
+          RUNNER_LABEL: ${{ inputs.runner_label }}
           ALLOW_HOSTED: ${{ inputs.allow_hosted }}
         run: |
           set -euo pipefail
           # GHA booleans arrive as strings true/false
           pl=$( [ "$PREFER_LOCAL" = "true" ] && echo true || echo false )
-          pu=$( [ "$PREFER_US1" = "true" ] && echo true || echo false )
+          pu=$( [ "$PREFER_LABEL" = "true" ] && echo true || echo false )
+          rl="$RUNNER_LABEL"
           ah=$( [ "$ALLOW_HOSTED" = "true" ] && echo true || echo false )
           # List online idle runners. github.token may lack org list permission — set RUNNER_QUERY_TOKEN.
           if json=$(gh api "orgs/${ORG}/actions/runners" 2>/dev/null); then
@@ -82,28 +88,28 @@ jobs:
             listed=0
             json='{"runners":[]}'
           fi
-          choice=$(printf '%s' "$json" | jq -r --argjson pl "$pl" --argjson pu "$pu" --argjson ah "$ah" --argjson listed "$listed" '
+          choice=$(printf '%s' "$json" | jq -r --argjson pl "$pl" --argjson pu "$pu" --argjson ah "$ah" --argjson listed "$listed" --arg rl "$rl" '
             [.runners[]? | select(.status=="online" and (.busy|not))] as $idle |
             def has($l): any($idle[]; any(.labels[]?; .name==$l));
             if ($listed==1 and $pl and has("local")) then "local"
-            elif ($listed==1 and $pu and has("us1")) then "us1"
-            elif ($listed==0 and $pu) then "us1"
+            elif ($listed==1 and $pu and has($rl)) then "preferred"
+            elif ($listed==0 and $pu) then "preferred"
             elif $ah then "hosted"
-            elif ($listed==1 and $pu) then "us1"
+            elif ($listed==1 and $pu) then "preferred"
             else "none"
             end
           ')
           # If list worked and preferred runners are only busy (not offline), still queue on us1
           if [ "$choice" = "none" ] && [ "$pu" = "true" ]; then
-            online_us1=$(printf '%s' "$json" | jq -r '[.runners[]? | select(.status=="online" and any(.labels[]?; .name=="us1"))] | length')
-            if [ "${online_us1:-0}" -gt 0 ]; then choice=us1; fi
+            online_preferred=$(printf '%s' "$json" | jq -r --arg rl "$rl" '[.runners[]? | select(.status=="online" and any(.labels[]?; .name==$rl))] | length')
+            if [ "${online_preferred:-0}" -gt 0 ]; then choice=preferred; fi
           fi
           case "$choice" in
             local)  runner='["self-hosted","local"]' ;;
-            us1)    runner='["self-hosted","us1"]' ;;
+            preferred) runner="[\"self-hosted\",\"${rl}\"]" ;;
             hosted) runner='"ubuntu-latest"' ;;
             *)
-              echo "No eligible runner (local/us1 offline and allow_hosted=false)" >&2
+              echo "No eligible runner (local/preferred offline and allow_hosted=false)" >&2
               exit 1
               ;;
           esac
