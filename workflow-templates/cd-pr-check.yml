@@ -29,7 +29,7 @@ jobs:
     runs-on: [us1, ubuntu-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate Compose YAML
         run: |

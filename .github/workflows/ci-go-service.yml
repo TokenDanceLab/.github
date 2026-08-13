@@ -7,7 +7,7 @@ on:
       go_version:
         required: false
         type: string
-        default: "1.25"
+        default: "1.26"
       working_directory:
         required: false
         type: string
@@ -36,10 +36,10 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ inputs.go_version }}
           cache: true
@@ -55,7 +55,7 @@ jobs:
 
       - name: Lint (non-blocking)
         continue-on-error: true
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           working-directory: ${{ inputs.working_directory }}
