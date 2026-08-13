@@ -1,45 +1,26 @@
-# TokenDanceLab · 组织级 CI/CD 模板
+# TokenDanceLab · org 元仓
 
-可复用 workflow 与模板，供 TokenDanceLab 下各仓库接入标准化 CI/CD。
+TokenDanceLab GitHub 组织的社区文件元仓：profile 首页、issue/PR 模板、行为规范与安全策略。
 
-## 快速开始 — 新仓库
+## 内容
 
-```bash
-mkdir -p .github/workflows
-cp workflow-templates/ci-go-service.yml .github/workflows/ci.yml
-```
+- `profile/README.md` — 组织首页
+- `ISSUE_TEMPLATE/` · `PULL_REQUEST_TEMPLATE.md` — issue/PR 模板
+- `CODE_OF_CONDUCT.md` · `CONTRIBUTING.md` · `SECURITY.md` — 社区与安全规范
 
-修改 `ci.yml` 顶部 `with:` 参数（Go 版本、工作目录等），push 即可。
+## CI/CD 策略
 
-## 可用模板
+**不统一 CI，各仓自治**（决策记录：issue #2）。各仓库在自身 `.github/workflows/` 维护适合自己的 workflow；本仓不提供 callable 或模板。
 
-| 模板 | 用途 | 调用方式 |
-|------|------|----------|
-| `ci-go-service.yml` | Go 服务：lint → test → build → vulncheck | 复制到仓库 |
-| `cd-ghcr-image.yml` | Docker 镜像构建 + GHCR 推送 | 复制到仓库 |
-| `cd-pr-check.yml` | PR 质量门禁 | 复制到仓库 |
+仓库 CI 强度参考分类（指导，非强制模板）：
 
-三个模板也支持 `workflow_call`，已有仓库可直接引用：
-
-```yaml
-jobs:
-  ci:
-    uses: TokenDanceLab/.github/.github/workflows/ci-go-service.yml@main
-    with:
-      go_version: "1.25"
-```
-
-## 仓库 CI 分类
-
-新仓库按类型选择 CI 强度：
-
-| 分类 | 定义 | 模板 | CI 强度 |
-|------|------|------|---------|
-| **A** 自有产品 | 无上游 merge 压力的产品 | `ci-go-service` + `cd-ghcr-image` | 完整 |
-| **B** Fork | 跟上游、有补丁面 | Overlay CI + `upstream-sync.yml` | 轻量 |
-| **C** 配置/部署 | deploy/nginx 清单 | — | 校验 |
-| **D** 已退役 | 生产关停 | — | 最低 |
-| **E** 文档/展示 | docs/design | path-filter | 轻量 |
+| 分类 | 定义 | CI 强度 |
+|------|------|---------|
+| **A** 自有产品 | 无上游 merge 压力的产品 | 完整（lint → test → build → vulncheck → 镜像） |
+| **B** Fork | 跟上游、有补丁面 | 轻量 overlay + upstream-sync |
+| **C** 配置/部署 | deploy/nginx 清单 | 校验 |
+| **D** 已退役 | 生产关停 | 最低 |
+| **E** 文档/展示 | docs/design | path-filter 轻量 |
 
 ## 安全红线
 
