@@ -30,6 +30,6 @@ Code 当前默认 CLI 使用模拟 Provider，真实模型接线仍在开发。A
 
 ## Services · 服务入口
 
-[Cloud · 服务导航](https://cloud.tokendancelab.com) · [Portal · 用量与模型数据](https://stats.tokendancelab.com) · [Status · 服务状态](https://status.tokendancelab.com)
+[Cloud · 服务导航](https://cloud.tokendancelab.com) · [Rankings · 模型用量排行](https://api.tokendancelab.com/rankings) · [Status · 服务状态](https://status.tokendancelab.com)
 
 [tokendancelab.com](https://tokendancelab.com) · [中文官网](https://tokendancelab.com/zh/)
