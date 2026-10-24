@@ -1,33 +1,23 @@
-# TokenDanceLab · org 元仓
+# TokenDanceLab organization files
 
-TokenDanceLab GitHub 组织的社区文件元仓：profile 首页、issue/PR 模板、行为规范与安全策略。
+This repository publishes the shared GitHub community files for the
+TokenDanceLab organization. Product code, documentation, release policy, and
+build instructions remain in the repository that owns them.
 
-## 内容
+## Contents
 
-- `profile/README.md` — 组织首页
-- `ISSUE_TEMPLATE/` · `PULL_REQUEST_TEMPLATE.md` — issue/PR 模板
-- `CODE_OF_CONDUCT.md` · `CONTRIBUTING.md` · `SECURITY.md` — 社区与安全规范
+- `profile/README.md` — organization profile
+- `ISSUE_TEMPLATE/` and `PULL_REQUEST_TEMPLATE.md` — shared contribution prompts
+- `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, and `SECURITY.md` — community and security guidance
 
-## CI/CD 策略
+## Repository ownership
 
-**不统一 CI，各仓自治**（决策记录：issue #2）。各仓库在自身 `.github/workflows/` 维护适合自己的 workflow；本仓不提供 callable 或模板。
+Each repository owns its own test, build, release, and support policy. This
+repository does not provide a shared runtime, deployment workflow, or version
+promise for every TokenDance project.
 
-仓库 CI 强度参考分类（指导，非强制模板）：
+Start with the [TokenDance Lab profile](profile/README.md) to find current
+products, public documentation, source, and service links.
 
-| 分类 | 定义 | CI 强度 |
-|------|------|---------|
-| **A** 自有产品 | 无上游 merge 压力的产品 | 完整（lint → test → build → vulncheck → 镜像） |
-| **B** Fork | 跟上游、有补丁面 | 轻量 overlay + upstream-sync |
-| **C** 配置/部署 | deploy/nginx 清单 | 校验 |
-| **D** 已退役 | 生产关停 | 最低 |
-| **E** 文档/展示 | docs/design | path-filter 轻量 |
-
-## 安全红线
-
-- **不要在 workflow 中硬编码 IP、host、secret。** 敏感信息通过 GitHub Secrets 注入。
-- L3 CD 推送 GHCR ≠ 自动部署。生产部署走独立 SOP。
-- fork 仓库尽量不改上游 workflow 文件，TD 自有 CI 用 `td-*.yml` 前缀。
-
----
-
-> 完整 CI/CD 策略见内部文档。本 README 为公开摘要，不包含运维细节。
+Security reports should follow [SECURITY.md](SECURITY.md). Do not include
+credentials, private account data, or infrastructure details in a public issue.
